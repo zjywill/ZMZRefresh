@@ -3,6 +3,7 @@ import 'package:fish_redux/fish_redux.dart';
 class SeriesState implements Cloneable<SeriesState> {
   String id;
   String baseUrl;
+  String state;
 
   @override
   SeriesState clone() {

@@ -101,10 +101,14 @@ void _onRemoveSeries(Action action, Context<HomeScreenState> ctx) async {
 void _onRefresh(Action action, Context<HomeScreenState> ctx) async {
   log("_onRefresh baseUrl: " + ctx.state.baseUrl);
   log("_onRefresh ids size: " + ctx.state.list.length.toString());
-  for (SeriesState seriesState in ctx.state.list) {
+  List<SeriesState> list = ctx.state.list;
+  for (SeriesState seriesState in list) {
     String url = ctx.state.baseUrl + seriesState.id;
     String content = await fetchData(url);
     log('fetchData: $content');
+    if (content.length > 0) {
+      seriesState.state = "ok";
+    }
   }
   ctx.dispatch(HomeScreenActionCreator.onPopulated(ctx.state));
 }
