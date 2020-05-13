@@ -35,6 +35,9 @@ void _onSaveBaseUrl(Action action, Context<HomeScreenState> ctx) async {
   log("_onSaveBaseUrl: " + baseUrl);
   final prefs = await SharedPreferences.getInstance();
   prefs.setString("baseUrl", baseUrl);
+  ctx.state.baseUrl = baseUrl;
+  ctx.state.list = List();
+  ctx.dispatch(HomeScreenActionCreator.onPopulated(ctx.state));
 }
 
 void _onAddSeries(Action action, Context<HomeScreenState> ctx) async {
@@ -117,10 +120,10 @@ List<SeriesState> jsonStringToList(String store) {
   if (store == null || store.length == 0) {
     store = "{}";
   }
-  log("jsonStringToList store: " + store);
-  var targetJson = jsonDecode(store) as List;
   List<SeriesState> ret = List();
   try {
+    log("jsonStringToList store: " + store);
+    var targetJson = jsonDecode(store) as List;
     ret = targetJson.map((tagJson) => SeriesState.fromJson(tagJson)).toList();
   } catch (e) {
     log("jsonStringToList e: " + e.toString());
