@@ -49,6 +49,7 @@ void _onAddSeries(Action action, Context<HomeScreenState> ctx) async {
   List<SeriesState> list = jsonStringToList(seriesList);
   SeriesState state = SeriesState(id, baseUrl, "new");
   list.add(state);
+  ctx.state.baseUrl = baseUrl;
   ctx.state.list = list;
   log("__onAddSeries list: " + list.toString());
   prefs.setString("seriesJson", listToJsonString(list));
@@ -62,6 +63,7 @@ void _onRemoveSeries(Action action, Context<HomeScreenState> ctx) async {
     return;
   }
   final prefs = await SharedPreferences.getInstance();
+  String baseUrl = prefs.getString("baseUrl");
   String seriesList = prefs.getString("seriesJson");
   List<SeriesState> list = jsonStringToList(seriesList);
   log("_onRemoveSeries list: " + list.length.toString());
@@ -73,6 +75,7 @@ void _onRemoveSeries(Action action, Context<HomeScreenState> ctx) async {
     }
   }
   log("_onRemoveSeries list: " + list.length.toString());
+  ctx.state.baseUrl = baseUrl;
   ctx.state.list = list;
   prefs.setString("seriesJson", listToJsonString(list));
   ctx.dispatch(HomeScreenActionCreator.onPopulated(ctx.state));
@@ -82,15 +85,22 @@ void _onRefresh(Action action, Context<HomeScreenState> ctx) async {
   try {
     log("_onRefresh baseUrl: " + ctx.state.baseUrl);
     log("_onRefresh ids size: " + ctx.state.list.length.toString());
-    List<SeriesState> list = ctx.state.list;
+    final prefs = await SharedPreferences.getInstance();
+    String baseUrl = prefs.getString("baseUrl");
+    String seriesList = prefs.getString("seriesJson");
+    List<SeriesState> list = jsonStringToList(seriesList);
     for (SeriesState seriesState in list) {
       String url = ctx.state.baseUrl + seriesState.id;
       String content = await fetchData(url);
       log('fetchData: $content');
       if (content.length > 0) {
-        seriesState.state = "ok";
+        var dateTime = new DateTime.now();
+        seriesState.state = dateTime.toString();
       }
     }
+    prefs.setString("seriesJson", listToJsonString(list));
+    ctx.state.baseUrl = baseUrl;
+    ctx.state.list = list;
   } catch (e) {
     log("_onRefresh e: " + e.toString());
   }
