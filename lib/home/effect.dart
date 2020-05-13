@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:fish_redux/fish_redux.dart';
@@ -23,17 +24,9 @@ void _init(Action action, Context<HomeScreenState> ctx) async {
   final prefs = await SharedPreferences.getInstance();
   String baseUrl = prefs.getString("baseUrl");
   ctx.state.baseUrl = baseUrl;
-  List<String> seriesList = prefs.getStringList("seriesList");
-  if (seriesList != null) {
-    List<SeriesState> list = List();
-    for (String item in seriesList) {
-      SeriesState seriesState = SeriesState();
-      seriesState.id = item;
-      seriesState.baseUrl = baseUrl;
-      list.add(seriesState);
-    }
-    ctx.state.list = list;
-  }
+  String seriesList = prefs.getString("seriesJson");
+  List<SeriesState> list = jsonStringToList(seriesList);
+  ctx.state.list = list;
   ctx.dispatch(HomeScreenActionCreator.onPopulated(ctx.state));
 }
 
@@ -52,22 +45,13 @@ void _onAddSeries(Action action, Context<HomeScreenState> ctx) async {
   }
   final prefs = await SharedPreferences.getInstance();
   String baseUrl = prefs.getString("baseUrl");
-  List<String> seriesList = prefs.getStringList("seriesList");
-  if (seriesList == null) {
-    seriesList = List();
-  }
-  seriesList.add(id);
-  prefs.setStringList("seriesList", seriesList);
-  if (seriesList != null) {
-    List<SeriesState> list = List();
-    for (String item in seriesList) {
-      SeriesState seriesState = SeriesState();
-      seriesState.id = item;
-      seriesState.baseUrl = baseUrl;
-      list.add(seriesState);
-    }
-    ctx.state.list = list;
-  }
+  String seriesList = prefs.getString("seriesJson");
+  List<SeriesState> list = jsonStringToList(seriesList);
+  SeriesState state = SeriesState(id, baseUrl, "new");
+  list.add(state);
+  ctx.state.list = list;
+  log("__onAddSeries list: " + list.toString());
+  prefs.setString("seriesJson", listToJsonString(list));
   ctx.dispatch(HomeScreenActionCreator.onPopulated(ctx.state));
 }
 
@@ -78,44 +62,64 @@ void _onRemoveSeries(Action action, Context<HomeScreenState> ctx) async {
     return;
   }
   final prefs = await SharedPreferences.getInstance();
-  String baseUrl = prefs.getString("baseUrl");
-  List<String> seriesList = prefs.getStringList("seriesList");
-  if (seriesList == null) {
-    seriesList = List();
-  }
-  seriesList.remove(id);
-  prefs.setStringList("seriesList", seriesList);
-  if (seriesList != null) {
-    List<SeriesState> list = List();
-    for (String item in seriesList) {
-      SeriesState seriesState = SeriesState();
-      seriesState.id = item;
-      seriesState.baseUrl = baseUrl;
-      list.add(seriesState);
+  String seriesList = prefs.getString("seriesJson");
+  List<SeriesState> list = jsonStringToList(seriesList);
+  log("_onRemoveSeries list: " + list.length.toString());
+  for (SeriesState item in list) {
+    if (item.id == id) {
+      log("_onRemoveSeries id: " + id);
+      list.remove(item);
+      break;
     }
-    ctx.state.list = list;
   }
+  log("_onRemoveSeries list: " + list.length.toString());
+  ctx.state.list = list;
+  prefs.setString("seriesJson", listToJsonString(list));
   ctx.dispatch(HomeScreenActionCreator.onPopulated(ctx.state));
 }
 
 void _onRefresh(Action action, Context<HomeScreenState> ctx) async {
-  log("_onRefresh baseUrl: " + ctx.state.baseUrl);
-  log("_onRefresh ids size: " + ctx.state.list.length.toString());
-  List<SeriesState> list = ctx.state.list;
-  for (SeriesState seriesState in list) {
-    String url = ctx.state.baseUrl + seriesState.id;
-    String content = await fetchData(url);
-    log('fetchData: $content');
-    if (content.length > 0) {
-      seriesState.state = "ok";
+  try {
+    log("_onRefresh baseUrl: " + ctx.state.baseUrl);
+    log("_onRefresh ids size: " + ctx.state.list.length.toString());
+    List<SeriesState> list = ctx.state.list;
+    for (SeriesState seriesState in list) {
+      String url = ctx.state.baseUrl + seriesState.id;
+      String content = await fetchData(url);
+      log('fetchData: $content');
+      if (content.length > 0) {
+        seriesState.state = "ok";
+      }
     }
+  } catch (e) {
+    log("_onRefresh e: " + e.toString());
   }
   ctx.dispatch(HomeScreenActionCreator.onPopulated(ctx.state));
 }
 
+String listToJsonString(List<SeriesState> data) {
+  String ret = jsonEncode(data);
+  log("listToJsonString ret: " + ret);
+  return ret;
+}
+
+List<SeriesState> jsonStringToList(String store) {
+  if (store == null || store.length == 0) {
+    store = "{}";
+  }
+  log("jsonStringToList store: " + store);
+  var targetJson = jsonDecode(store) as List;
+  List<SeriesState> ret = List();
+  try {
+    ret = targetJson.map((tagJson) => SeriesState.fromJson(tagJson)).toList();
+  } catch (e) {
+    log("jsonStringToList e: " + e.toString());
+  }
+  return ret;
+}
+
 Future<String> fetchData(String url) async {
   log('fetchData: $url');
-  String contents = "";
   final response = await http.get(url);
   log('fetchData response $response');
   if (response.statusCode == 200) {

@@ -8,7 +8,6 @@ import 'state.dart';
 
 Widget buildView(
     SeriesState state, Dispatch dispatch, ViewService viewService) {
-  log("state: " + state.state.toString());
   return Dismissible(
     key: Key(state.id),
     background: Container(color: Colors.red),
